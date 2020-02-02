@@ -10,7 +10,7 @@ def fastai_tabular_prediction_component(
         input_table_name,
         output_table_name,
         partition_column,
-        model_file_path,
+        model_gcs_file,
         dataset,
         torch_package_path,
         fastai_package_path,
@@ -23,7 +23,7 @@ def fastai_tabular_prediction_component(
         input_table_name,
         output_table_name,
         partition_column,
-        model_file_path,
+        model_gcs_file,
         dataset,
         torch_package_path,
         fastai_package_path,
@@ -44,7 +44,7 @@ class FastaiTabularPredictionComponent(object):
                  input_table_name,
                  output_table_name,
                  partition_column,
-                 model_file_path,
+                 model_gcs_file,
                  dataset,
                  torch_package_path,
                  fastai_package_path,
@@ -55,7 +55,7 @@ class FastaiTabularPredictionComponent(object):
         self.input_table_name = input_table_name
         self.output_table_name = output_table_name
         self.partition_column = partition_column
-        self.model_file_path = model_file_path
+        self.model_gcs_file = model_gcs_file
         self.config = dataset.config if dataset is not None else None
         self.torch_package_path = torch_package_path
         self.fastai_package_path = fastai_package_path
@@ -72,10 +72,7 @@ class FastaiTabularPredictionComponent(object):
         runtime = runtime[date]
         predict_path = str((Path(__file__).parent / 'predict.py').absolute())
 
-        model_file = unzip_file_and_save_outside_zip_as_tmp_file(self.model_file_path)
         predict_module = unzip_file_and_save_outside_zip_as_tmp_file(predict_path)
-        with open(model_file.name, 'rb') as model:
-            model_bytes = model.read()
 
         if self.custom_pipeline is None:
             torch_whl_handle, fastai_whl_handle, p = predict_io.dataflow_pipeline(
@@ -99,6 +96,6 @@ class FastaiTabularPredictionComponent(object):
                     self.config.dataset_name,
                     self.output_table_name,
                     runtime),
-                'model_bytes': model_bytes,
+                'model_gcs_path': self.model_gcs_file,
             }},
             run_name='__main__')
