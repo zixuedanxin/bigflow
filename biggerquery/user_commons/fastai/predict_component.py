@@ -10,7 +10,7 @@ def fastai_tabular_prediction_component(
         input_table_name,
         output_table_name,
         partition_column,
-        model_gcs_file,
+        model_gcs_path,
         dataset,
         torch_package_path,
         fastai_package_path,
@@ -23,7 +23,7 @@ def fastai_tabular_prediction_component(
         input_table_name,
         output_table_name,
         partition_column,
-        model_gcs_file,
+        model_gcs_path,
         dataset,
         torch_package_path,
         fastai_package_path,
@@ -44,7 +44,7 @@ class FastaiTabularPredictionComponent(object):
                  input_table_name,
                  output_table_name,
                  partition_column,
-                 model_gcs_file,
+                 model_gcs_path,
                  dataset,
                  torch_package_path,
                  fastai_package_path,
@@ -55,7 +55,7 @@ class FastaiTabularPredictionComponent(object):
         self.input_table_name = input_table_name
         self.output_table_name = output_table_name
         self.partition_column = partition_column
-        self.model_gcs_file = model_gcs_file
+        self.model_gcs_path = model_gcs_path
         self.config = dataset.config if dataset is not None else None
         self.torch_package_path = torch_package_path
         self.fastai_package_path = fastai_package_path
@@ -96,6 +96,6 @@ class FastaiTabularPredictionComponent(object):
                     self.config.dataset_name,
                     self.output_table_name,
                     runtime),
-                'model_gcs_path': self.model_gcs_file,
+                'model_gcs_path': self.model_gcs_path,
             }},
             run_name='__main__')
