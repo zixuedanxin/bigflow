@@ -32,7 +32,12 @@ def bigquery_output(project_id, dataset_name, table_name, dt):
         write_disposition=BigQueryDisposition.WRITE_TRUNCATE)
 
 
-def dataflow_pipeline(dataset_config: DatasetConfig, dataflow_job_name, torch_package_path, fastai_package_path):
+def dataflow_pipeline(
+        dataset_config: DatasetConfig,
+        dataflow_job_name,
+        torch_package_path,
+        fastai_package_path,
+        requirements_file_path):
     options = PipelineOptions()
 
     logging.info('Setting up fastai prediction')
@@ -47,6 +52,7 @@ def dataflow_pipeline(dataset_config: DatasetConfig, dataflow_job_name, torch_pa
     google_cloud_options.region = dataset_config.dataflow_config.region
     options.view_as(WorkerOptions).machine_type = dataset_config.dataflow_config.machine_type
     options.view_as(StandardOptions).runner = 'DataflowRunner'
+    options.view_as(SetupOptions).requirements_file = unzip_file_and_save_outside_zip_as_tmp_file(requirements_file_path).name
 
     torch_package = unzip_file_and_save_outside_zip_as_tmp_file(torch_package_path)
     fastai_package = unzip_file_and_save_outside_zip_as_tmp_file(fastai_package_path)

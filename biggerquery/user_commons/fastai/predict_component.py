@@ -14,6 +14,7 @@ def fastai_tabular_prediction_component(
         dataset,
         torch_package_path,
         fastai_package_path,
+        requirements_file_path,
         dataflow_job_name=None,
         custom_input_collection=None,
         custom_output=None,
@@ -27,6 +28,7 @@ def fastai_tabular_prediction_component(
         dataset,
         torch_package_path,
         fastai_package_path,
+        requirements_file_path,
         dataflow_job_name,
         custom_input_collection,
         custom_output,
@@ -48,6 +50,7 @@ class FastaiTabularPredictionComponent(object):
                  dataset,
                  torch_package_path,
                  fastai_package_path,
+                 requirements_file_path,
                  dataflow_job_name=None,
                  custom_input_collection=None,
                  custom_output=None,
@@ -59,6 +62,7 @@ class FastaiTabularPredictionComponent(object):
         self.config = dataset.config if dataset is not None else None
         self.torch_package_path = torch_package_path
         self.fastai_package_path = fastai_package_path
+        self.requirements_file_path = requirements_file_path
         self.dataflow_job_name = dataflow_job_name or 'fastai-prediction-{id}'.format(
             id=str(uuid.uuid4()))
 
@@ -79,7 +83,8 @@ class FastaiTabularPredictionComponent(object):
                 self.config,
                 self.dataflow_job_name,
                 self.torch_package_path,
-                self.fastai_package_path)
+                self.fastai_package_path,
+                self.requirements_file_path)
 
         return runpy.run_path(
             path_name=predict_module.name,
