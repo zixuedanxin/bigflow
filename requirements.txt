@@ -1,5 +1,5 @@
 jupyter
-setuptools
+setuptools==45.2.0
 wheel
 twine
 tqdm
