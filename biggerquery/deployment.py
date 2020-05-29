@@ -26,7 +26,6 @@ def create_python_operator(dag, workflow, job):
         'python_callable': callable_factory(job, workflow.dt_as_datetime),
         'retries': job.retry_count,
         'retry_delay': timedelta(seconds=job.retry_pause_sec),
-        'provide_context': True,
         'op_args': ['{{ ds }}', '{{ ts }}']
     }
 
