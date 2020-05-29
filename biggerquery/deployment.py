@@ -22,23 +22,22 @@ def callable_factory(job, dt_as_datetime):
 def create_python_operator(dag, workflow, job):
     from airflow.operators import python_operator
 
-    if not workflow.requirements:
-        return python_operator.PythonOperator(
-            dag=dag,
-            task_id=job.id,
-            python_callable=callable_factory(job, workflow.dt_as_datetime),
-            retries=job.retry_count,
-            retry_delay=timedelta(seconds=job.retry_pause_sec),
-            provide_context=True)
+    operator_kwargs = {
+        'dag': dag,
+        'task_id': job.id,
+        'python_callable': callable_factory(job, workflow.dt_as_datetime),
+        'retries': job.retry_count,
+        'retry_delay': timedelta(seconds=job.retry_pause_sec),
+        'provide_context': True
+    }
+
+    if workflow.virtual_env_configuration:
+        operator_kwargs.update(workflow.virtual_env_configuration.to_dict())
+
+    if not workflow.virtual_env_configuration:
+        return python_operator.PythonOperator(**operator_kwargs)
     else:
-        return python_operator.PythonVirtualenvOperator(
-            dag=dag,
-            requirements=workflow.requirements,
-            task_id=job.id,
-            python_callable=callable_factory(job, workflow.dt_as_datetime),
-            retries=job.retry_count,
-            retry_delay=timedelta(seconds=job.retry_pause_sec),
-            provide_context=True)
+        return python_operator.PythonVirtualenvOperator(**operator_kwargs)
 
 
 def workflow_to_dag(workflow, start_from, dag_id):

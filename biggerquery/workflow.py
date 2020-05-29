@@ -3,18 +3,33 @@ from collections import OrderedDict
 DEFAULT_SCHEDULE_INTERVAL = '@daily'
 
 
+class VirtualEnvConfiguration(object):
+    def __init__(self, requirements, system_site_packages=True, **kwargs):
+        self.requirements = requirements
+        self.system_site_packages = system_site_packages
+        self.additional_parameters = kwargs
+
+    def to_dict(self):
+        result = {
+            'requirements': self.requirements,
+            'system_site_packages': self.system_site_packages
+        }
+        result.update(self.additional_parameters)
+        return result
+
+
 class Workflow(object):
     def __init__(self,
                  definition,
                  schedule_interval=DEFAULT_SCHEDULE_INTERVAL,
                  dt_as_datetime=False,
-                 requirements=None,
+                 virtual_env_configuration: VirtualEnvConfiguration = None,
                  **kwargs):
         self.definition = self._parse_definition(definition)
         self.schedule_interval = schedule_interval
         self.dt_as_datetime = dt_as_datetime
         self.kwargs = kwargs
-        self.requirements = requirements or []
+        self.virtual_env_configuration = virtual_env_configuration
 
     def run(self, runtime):
         for job in self.build_sequential_order():
