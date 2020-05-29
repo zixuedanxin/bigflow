@@ -8,13 +8,20 @@ import shutil
 from .utils import zip_dir, merge_dicts
 
 
-def callable_factory(job, dt_as_datetime):
-    def job_callable(ds, ts):
-        job.run(parse_date.parse(ts).strftime("%Y-%m-%d %H:%M:%S")
-                if dt_as_datetime
+class JobCallable(object):
+
+    def __init__(self, job, dt_as_datetime):
+        self.job = job
+        self.dt_as_datetime = dt_as_datetime
+
+    def __call__(self, ds, ts):
+        self.job.run(parse_date.parse(ts).strftime("%Y-%m-%d %H:%M:%S")
+                if self.dt_as_datetime
                 else ds)
 
-    return job_callable
+
+def callable_factory(job, dt_as_datetime):
+    return JobCallable(job, dt_as_datetime)
 
 
 def create_python_operator(dag, workflow, job):
