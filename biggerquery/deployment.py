@@ -9,12 +9,10 @@ from .utils import zip_dir, merge_dicts
 
 
 def callable_factory(job, dt_as_datetime):
-    def job_callable(**kwargs):
-        timestamp_name = 'ds' if not dt_as_datetime else 'ts'
-        runtime = kwargs.get(timestamp_name)
-        job.run(parse_date.parse(runtime).strftime("%Y-%m-%d %H:%M:%S")
-                if timestamp_name == 'ts'
-                else runtime)
+    def job_callable(ds, ts):
+        job.run(parse_date.parse(ts).strftime("%Y-%m-%d %H:%M:%S")
+                if dt_as_datetime
+                else ds)
 
     return job_callable
 
@@ -28,7 +26,8 @@ def create_python_operator(dag, workflow, job):
         'python_callable': callable_factory(job, workflow.dt_as_datetime),
         'retries': job.retry_count,
         'retry_delay': timedelta(seconds=job.retry_pause_sec),
-        'provide_context': True
+        'provide_context': True,
+        'op_args': ['{{ ds }}', '{{ ts }}']
     }
 
     if workflow.virtual_env_configuration:
