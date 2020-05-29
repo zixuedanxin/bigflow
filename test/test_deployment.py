@@ -186,7 +186,6 @@ class WorkflowToDagTestCase(TestCase):
         self.assertEqual(dag.tasks[0].python_callable, python_callable)
         self.assertEqual(dag.tasks[0].retries, 100)
         self.assertEqual(dag.tasks[0].retry_delay, timedelta(seconds=200))
-        self.assertEqual(dag.tasks[0].provide_context, True)
 
 
 class BuildDagFileTestCase(TestCase):
