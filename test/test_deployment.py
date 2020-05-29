@@ -111,7 +111,7 @@ class CallableFactoryTestCase(TestCase):
         job = mock.Mock()
 
         # when
-        callable_factory(job, dt_as_datetime=False)(ds='2019-01-01')
+        callable_factory(job, dt_as_datetime=False)(ds='2019-01-01', ts='2019-01-01 00:00:00')
 
         # then
         job.assert_has_calls([mock.call.run('2019-01-01')])
@@ -121,7 +121,7 @@ class CallableFactoryTestCase(TestCase):
         job = mock.Mock()
 
         # when
-        callable_factory(job, dt_as_datetime=True)(ts='2019-01-01 00:00:00')
+        callable_factory(job, dt_as_datetime=True)(ts='2019-01-01 00:00:00', ds='2019-01-01')
 
         # then
         job.assert_has_calls([mock.call.run('2019-01-01 00:00:00')])
