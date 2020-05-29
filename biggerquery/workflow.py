@@ -8,11 +8,13 @@ class Workflow(object):
                  definition,
                  schedule_interval=DEFAULT_SCHEDULE_INTERVAL,
                  dt_as_datetime=False,
+                 requirements=None,
                  **kwargs):
         self.definition = self._parse_definition(definition)
         self.schedule_interval = schedule_interval
         self.dt_as_datetime = dt_as_datetime
         self.kwargs = kwargs
+        self.requirements = requirements or []
 
     def run(self, runtime):
         for job in self.build_sequential_order():
