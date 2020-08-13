@@ -1,6 +1,6 @@
-PROJECT_NAME = 'docs_examples'
-
-
+from setuptools import setup
 from bigflow.build import project_setup, auto_configuration
+PROJECT_NAME = 'examples'
 
-setup(**project_setup(**auto_configuration(PROJECT_NAME)))
+if __name__ == '__main__':
+    setup(**project_setup(**auto_configuration(PROJECT_NAME)))

@@ -8,7 +8,7 @@ It can execute anything that can be executed from the Python code, for example:
 * Dataproc process
 * Apache Beam process
 * BigQuery query
-* Any Python code.
+* Any Python code
 
 The simplest workflow you can create looks like this:
 
