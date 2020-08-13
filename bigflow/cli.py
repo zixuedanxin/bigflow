@@ -15,6 +15,7 @@ from typing import Optional
 from bigflow import Config
 from bigflow.deploy import deploy_dags_folder, deploy_docker_image, load_image_from_tar
 from bigflow.resources import find_file
+from bigflow.scaffold import start_project
 from .utils import run_process
 
 
@@ -221,7 +222,7 @@ def cli_run(project_package: str,
 def _parse_args(project_name: Optional[str], args) -> Namespace:
     project_name_description = build_project_name_description(project_name)
     parser = argparse.ArgumentParser(description=f'Welcome to BigFlow CLI. {project_name_description}'
-                                                  '\nType: bf {run,deploy-dags,deploy-image,deploy,build,build-dags,build-image,build-package} -h to print detailed help for selected command.')
+                                                  '\nType: bf {start-project, run,deploy-dags,deploy-image,deploy,build,build-dags,build-image,build-package} -h to print detailed help for selected command.')
     subparsers = parser.add_subparsers(dest='operation',
                                        required=True,
                                        help='bf command to execute')
@@ -236,7 +237,13 @@ def _parse_args(project_name: Optional[str], args) -> Namespace:
     _create_build_package_parser(subparsers)
     _create_build_parser(subparsers)
 
+    _create_start_project_parser(subparsers)
+
     return parser.parse_args(args)
+
+
+def _create_start_project_parser(subparsers):
+    subparsers.add_parser('start-project', description='Creates example project in current directory.')
 
 
 def _create_build_parser(subparsers):
@@ -534,5 +541,7 @@ def cli(raw_args) -> None:
         _cli_build_package()
     elif operation == 'build':
         _cli_build(parsed_args)
+    elif operation == 'start-project':
+        start_project()
     else:
         raise ValueError(f'Operation unknown - {operation}')

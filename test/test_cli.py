@@ -696,6 +696,14 @@ deployment_config = Config(name='dev',
         self.assertEqual(run_process_mock.call_count, 1)
         run_process_mock.assert_any_call('python project_setup.py build_project --build-dags')
 
+    def test_should_call_build_dags_command_through_CLI(self):
+
+        # when
+        cli(['start-project'])
+
+        # then
+        a = 0
+
     def _expected_default_dags_dir(self):
         return (Path(os.getcwd()) / '.dags').as_posix()
 
