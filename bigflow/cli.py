@@ -513,6 +513,20 @@ def _cli_build(args):
     run_process(cmd)
 
 
+def _cli_start_project():
+    config = {'is_basic': False, 'project_name': input('Project name'), 'projects_id': [], 'composers_bucket': []}
+    if input("Would you like to create basic or advanced project?") != 'basic':
+        number_of_projects = input('How many GCP projects would you like to use?')
+        for project in range(0, int(number_of_projects)):
+            config['projects_id'].append(input('GCP dev project'))
+            config['composers_bucket'].append(input('Bucket'))
+    else:
+        config['is_basic'] = True
+        config['projects_id'] = input('GCP project')
+        config['composers_bucket'] = input('Bucket')
+    start_project(config)
+
+
 def check_if_project_setup_exists():
     find_file('project_setup.py', Path('.'), 1)
 
@@ -542,6 +556,6 @@ def cli(raw_args) -> None:
     elif operation == 'build':
         _cli_build(parsed_args)
     elif operation == 'start-project':
-        start_project()
+        _cli_start_project()
     else:
         raise ValueError(f'Operation unknown - {operation}')
