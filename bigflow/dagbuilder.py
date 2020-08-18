@@ -16,16 +16,14 @@ def generate_dag_file(workdir: str,
                       start_from: str,
                       build_ver: str,
                       root_package_name: str) -> str:
-    print('creating DAG file ...')
     print(f'start_from: {start_from}')
-    print(f'workdir: {workdir}')
     print(f'build_ver: {build_ver}')
     print(f'docker_repository: {docker_repository}')
 
     dag_deployment_id = get_dag_deployment_id(workflow.workflow_id, start_from, build_ver)
     dag_file_path = get_dags_output_dir(workdir) / (dag_deployment_id + '_dag.py')
 
-    if workflow.schedule_interval == '@daily':
+    if not workflow.runtime_as_datetime:
         start_from = start_from[:10]
         start_date_as_str = f'datetime.strptime("{start_from}", "%Y-%m-%d")'
     else:
@@ -73,7 +71,7 @@ dag = DAG(
     task_id='{task_id}',
     name='{task_id}',
     cmds=['bf'],
-    arguments=['run', '--job', '{bf_job}', '--runtime', '{{{{ execution_date.strftime("%Y-%m-%d %H:%M:%S") }}}}', '--root', '{root_folder}', '--config', '{{{{var.value.env}}}}'],
+    arguments=['run', '--job', '{bf_job}', '--runtime', '{{{{ execution_date.strftime("%Y-%m-%d %H:%M:%S") }}}}', '--project-package', '{root_folder}', '--config', '{{{{var.value.env}}}}'],
     namespace='default',
     image='{docker_image}',
     is_delete_operator_pod=True,
@@ -85,9 +83,8 @@ dag = DAG(
           docker_image = docker_repository+":"+build_ver,
           bf_job= workflow.workflow_id+"."+job.id,
           root_folder=root_package_name,
-          retries=job.retry_count,
-          retry_delay=job.retry_pause_sec)
-)
+          retries=job.retry_count if hasattr(job, 'retry_count') else 3,
+          retry_delay=job.retry_pause_sec if hasattr(job, 'retry_pause_sec') else 60))
 
         for d in dependencies:
             up_job_var = "t" + str(get_job(d).id)
@@ -97,7 +94,6 @@ dag = DAG(
     workflow.call_on_graph_nodes(build_dag_operator)
 
     dag_file_content = '\n'.join(dag_chunks) + '\n'
-    print (dag_file_content)
     dag_file_path.write_text(dag_file_content)
 
     return dag_file_path.as_posix()

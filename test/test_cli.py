@@ -497,7 +497,8 @@ deployment_config = Config(name='dev',
 
     @mock.patch('bigflow.cli.load_image_from_tar')
     @mock.patch('bigflow.cli.deploy_docker_image')
-    def test_should_call_cli_deploy_image_command__when_all_parameters_are_given_by_cli_arguments_and_image_is_loaded_from_tar(self, deploy_docker_image_mock, load_image_from_tar_mock):
+    @mock.patch('bigflow.cli.tag_image')
+    def test_should_call_cli_deploy_image_command__when_all_parameters_are_given_by_cli_arguments_and_image_is_loaded_from_tar(self, tag_image, deploy_docker_image_mock, load_image_from_tar_mock):
         #given
         tar = self._touch_file('image-0.0.1.tar')
 
@@ -694,7 +695,7 @@ deployment_config = Config(name='dev',
 
         # then
         self.assertEqual(run_process_mock.call_count, 1)
-        run_process_mock.assert_any_call('python project_setup.py build_project --build-dags')
+        run_process_mock.assert_any_call('python project_setup.py build_project --build-dags'.split(' '))
 
     def test_should_call_build_dags_command_through_CLI(self):
 

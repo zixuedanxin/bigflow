@@ -3,7 +3,6 @@ from pathlib import Path
 import subprocess
 import shutil
 import distutils.cmd
-from datetime import datetime
 import setuptools
 import unittest
 
@@ -12,7 +11,7 @@ import xmlrunner
 from .cli import walk_workflows, import_deployment_config, _valid_datetime
 from .dagbuilder import generate_dag_file
 from .resources import read_requirements, find_all_resources
-from .utils import resolve
+from .utils import resolve, now
 from .version import get_version
 from .utils import run_process
 
@@ -21,10 +20,6 @@ __all__ = [
     'project_setup',
     'auto_configuration'
 ]
-
-
-def now(template: str = "%Y-%m-%d %H:00:00"):
-    return datetime.now().strftime(template)
 
 
 def run_tests(build_dir: Path, test_package: Path):
@@ -57,13 +52,13 @@ def get_docker_image_id(tag):
 
 
 def remove_docker_image_from_local_registry(tag):
-    print('Removing image from the local registry')
+    print('Removing the image from the local registry')
     run_process(f"docker rmi {get_docker_image_id(tag)}")
 
 
 def export_docker_image_to_file(tag: str, target_dir: Path, version: str):
-    print(f'Exporting image to a file')
     image_target_path = target_dir / f'image-{version}.tar'
+    print(f'Exporting the image to file: {image_target_path}' )
     run_process(f"docker image save {get_docker_image_id(tag)} -o {resolve(image_target_path)}")
 
 
@@ -80,9 +75,9 @@ def build_dags(
         version,
         specific_workflow=None):
     for workflow in walk_workflows(root_package):
-        print(f'Generating DAG for {workflow.workflow_id}')
         if specific_workflow is not None and specific_workflow != workflow.workflow_id:
             continue
+        print(f'Generating DAG file for {workflow.workflow_id}')
         generate_dag_file(
             resolve(project_dir),
             docker_repository,

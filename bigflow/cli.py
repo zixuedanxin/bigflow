@@ -13,7 +13,7 @@ import bigflow as bf
 from typing import Optional
 
 from bigflow import Config
-from bigflow.deploy import deploy_dags_folder, deploy_docker_image, load_image_from_tar
+from bigflow.deploy import deploy_dags_folder, deploy_docker_image, load_image_from_tar, tag_image
 from bigflow.resources import find_file
 from bigflow.scaffold import start_project
 from .utils import run_process
@@ -222,10 +222,10 @@ def cli_run(project_package: str,
 def _parse_args(project_name: Optional[str], args) -> Namespace:
     project_name_description = build_project_name_description(project_name)
     parser = argparse.ArgumentParser(description=f'Welcome to BigFlow CLI. {project_name_description}'
-                                                  '\nType: bf {start-project, run,deploy-dags,deploy-image,deploy,build,build-dags,build-image,build-package} -h to print detailed help for selected command.')
+                                                  '\nType: bigflow {start-project, run,deploy-dags,deploy-image,deploy,build,build-dags,build-image,build-package} -h to print detailed help for a selected command.')
     subparsers = parser.add_subparsers(dest='operation',
                                        required=True,
-                                       help='bf command to execute')
+                                       help='bigflow command to execute')
 
     _create_run_parser(subparsers, project_name)
     _create_deploy_dags_parser(subparsers)
@@ -271,12 +271,16 @@ def _valid_datetime(dt):
 def _add_build_dags_parser_arguments(parser):
     parser.add_argument('-w', '--workflow',
                         type=str,
-                        help="Id of a workflow to build. For example to run only this workflow: bf.Workflow(workflow_id='workflow1',"
-                             " definition=[ExampleJob('job1')]) you should use --w workflow1")
+                        help="Leave empty to build DAGs from all workflows. "
+                             "Set a workflow Id to build selected workflow only. "
+                             "For example to build only this workflow: bigflow.Workflow(workflow_id='workflow1',"
+                             " definition=[ExampleJob('job1')]) you should use --workflow workflow1")
     parser.add_argument('-t', '--start-time',
-                        help='Point of time from which a workflow should start working. '
-                             'For workflows triggered hourly -- datetime in format: Y-m-d H:M:S, for example 2020-01-01 00:00:00'
-                             'For workflows triggered daily -- datetime in format: Y-m-d, for example 2020-01-01',
+                        help='The first runtime of a workflow. '
+                             'For workflows triggered hourly -- datetime in format: Y-m-d H:M:S, for example 2020-01-01 00:00:00. '
+                             'For workflows triggered daily -- date in format: Y-m-d, for example 2020-01-01. '
+                             'If empty, current hour is used for hourly workflows and '
+                             'today for daily workflows. ',
                         type=_valid_datetime)
 
 
@@ -284,7 +288,8 @@ def _add_build_image_parser_arguments(parser):
     parser.add_argument('-e', '--export-image-to-file',
                         default=False,
                         action="store_true",
-                        help="If true, an image is exported to a *.tar file.")
+                        help="If set, an image is exported to a *.tar file. "
+                             "If empty, an image is loaded to a local Docker repository.")
 
 
 def _create_build_dags_parser(subparsers):
@@ -319,7 +324,7 @@ def _create_run_parser(subparsers, project_name):
     _add_parsers_common_arguments(parser)
 
     if project_name is None:
-        parser.add_argument('--project_package',
+        parser.add_argument('--project-package',
                             required=True,
                             type=str,
                             help='The main package of your project. '
@@ -361,6 +366,7 @@ def _add_deploy_parsers_common_arguments(parser):
                              'If not set, {current_dir}/deployment_config.py will be used.')
 
     _add_parsers_common_arguments(parser)
+
 
 def _create_deploy_parser(subparsers):
     parser = subparsers.add_parser('deploy',
@@ -471,15 +477,17 @@ def _load_image_from_tar(image_tar_path: str):
 
 
 def _cli_deploy_image(args):
+    docker_repository = _resolve_property(args, 'docker_repository')
     if args.image_tar_path:
         build_ver = _decode_version_number_from_file_name(Path(args.image_tar_path))
-        load_image_from_tar(args.image_tar_path)
+        image_id = load_image_from_tar(args.image_tar_path)
+        tag_image(image_id, docker_repository, build_ver)
     else:
         build_ver = args.version
 
     deploy_docker_image(build_ver=build_ver,
                         auth_method=args.auth_method,
-                        docker_repository=_resolve_property(args, 'docker_repository'),
+                        docker_repository=docker_repository,
                         vault_endpoint=_resolve_vault_endpoint(args),
                         vault_secret=args.vault_secret)
 
@@ -498,18 +506,27 @@ def _cli_build_package():
 
 def _cli_build_dags(args):
     check_if_project_setup_exists()
-    cmd = 'python project_setup.py build_project --build-dags' + \
-          ((' --workflow ' + args.workflow) if args.workflow else '') + \
-          ((' --start-time ' + args.start_time) if args.start_time else '')
+    cmd = ['python', 'project_setup.py', 'build_project', '--build-dags']
+    if args.workflow:
+        cmd.append('--workflow')
+        cmd.append(args.workflow)
+    if args.start_time:
+        cmd.append('--start-time')
+        cmd.append(args.start_time)
     run_process(cmd)
 
 
 def _cli_build(args):
     check_if_project_setup_exists()
-    cmd = 'python project_setup.py build_project' + \
-          ((' --workflow ' + args.workflow) if args.workflow else '') + \
-          ((' --start-time ' + args.start_time) if args.start_time else '') + \
-          (' --export-image-to-file' if args.export_image_to_file else '')
+    cmd = ['python', 'project_setup.py', 'build_project']
+    if args.workflow:
+        cmd.append('--workflow')
+        cmd.append(args.workflow)
+    if args.start_time:
+        cmd.append('--start-time')
+        cmd.append(args.start_time)
+    if args.export_image_to_file:
+        cmd.append('--export-image-to-file')
     run_process(cmd)
 
 
@@ -545,8 +562,8 @@ def cli(raw_args) -> None:
     elif operation == 'deploy-dags':
         _cli_deploy_dags(parsed_args)
     elif operation == 'deploy':
-        _cli_deploy_dags(parsed_args)
         _cli_deploy_image(parsed_args)
+        _cli_deploy_dags(parsed_args)
     elif operation == 'build-dags':
         _cli_build_dags(parsed_args)
     elif operation == 'build-image':

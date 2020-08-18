@@ -1,44 +1,348 @@
-## CLI
+# BigFlow CLI
 
-### Running BigFlow
+BigFlow package offers a command-line tool called `bigflow`.
+It lets you run, build, and deploy your workflows from command-line on any machine with Python.
 
-BigFlow offers a cli (command-line interface) that lets you run or deploy jobs and workflows directly from your terminal. The main commands are:
-* `run` - lets you run a job or a workflow,
+BigFlow CLI is the recommended way of working with BigFlow projects
+on a local machine as well as for build and deployment automation on CI/CD servers.  
 
-To run any command, start with `bf` and command name. To ask for help, use `bf -h` or `bf <command name> -h`.
+## Installing BigFlow CLI
 
-#### Run
+Prerequisites:
 
-`run` command lets you run a job or a workflow. Here are a few examples how it can be used:
+1. [Python](https://www.python.org/downloads/) 3.7
+2. [Google Cloud SDK](https://cloud.google.com/sdk/docs/downloads-interactive)
+3. [Docker Engine](https://docs.docker.com/engine/install/)  
 
+
+You can install the `bigflow` package globally but we recommend to 
+install it locally with `venv`, in your project's folder:
+
+```bash
+python -m venv .bigflow_env
+source .bigflow_env/bin/activate
+cd .bigflow_env
 ```
-bf run --workflow workflowId
-bf run --workflow workflowId --runtime '2020-01-01 00:00:00' --config prod
-bf run --job jobId
-bf run --job jobId --runtime '2020-01-01 00:00:00'
-bf run --job jobId --runtime '2020-01-01 00:00:00' --config dev
+
+Install the `bigflow` package:
+
+```bash
+pip install bigflow
 ```
 
-Run command requires you to provide one of those two parameters:
-* `--job <job id>` - use it to run a job by its id. You can set job id by setting `id` field in the object representing this job. 
-* `--workflow <workflow id>` - use it to run a workflow by its id. You can set workflow id using named parameter `workflow_id` (`bf.Workflow(workflow_id="YOUR_ID", ...)`). 
-In both cases, id needs to be set and unique.
+Test it:
 
-Run command also allows the following optional parameters:
-* `--runtime <runtime in format YYYY-MM-DD hh:mm:ss>` - use it to set the date and time when this job or workflow should be started. Example value: `2020-01-01 00:12:00`. The default is now. 
-* `--config <runtime>` - use it to configure environment name that should be used. Example: `dev`, `prod`. If not set, the default Config name will be used. This env name is applied to all bigflow.Config objects that are defined by individual workflows as well as to deployment_config.py.
-* `--project_package <project_package>` - use it to set the main package of your project, only when project_setup.PROJECT_NAME not found. Example: `logistics_tasks`. The value does not affect when project_setup.PROJECT_NAME is set. Otherwise, it is required. 
-TODO
-what is CLI? how to install bf command?
+```shell
+bigflow -h
+```
 
-### CLI deploy
+You should see the welcome message and the list of all `bigflow` commands:
+
+```text
+Welcome to BiggerQuery CLI. Type: bigflow {run,deploy-dags,deploy-
+image,deploy,build,build-dags,build-image,build-package} -h to print detailed
+help for a selected command.
+```
+
+Each command has its own set of arguments. Check it with `-h`, for example:
+
+```shell
+bigflow run -h
+```
+
+## Running jobs and workflows
+
+`bigflow run` command lets you run a job or a workflow for a given `runtime`.
+It runs your source code on your local machine (without deploying it to Airflow/Composer). 
+
+Typically, `bigflow run` is used for local development because it's the simplest way to execute a workflow.
+It's not recommended to be used on production, because:
+
+* It's driven from a local machine. If you kill or suspend a `bigflow run` process, what happens on GCP is undefined.
+* It uses [local authentication](#authentication-methods) so it relies on permissions of your Google account.
+* It executes a job or workflow only once
+  (while on production environment you probably want your workflows to be run periodically by Composer).
+
+**Here are a few examples**
+
+The example workflow is super simple. It consists of two jobs. The first one says Hello, and the second one says
+Goodbye. 
+
+[`hello_world_workflow.py`](examples/cli/hello_world_workflow.py):
+
+```python
+from bigflow.workflow import Workflow
+class HelloWorldJob:
+    def __init__(self):
+        self.id = 'hello_world'
+    def run(self, runtime):
+        print(f'Hello world at {runtime}!')
+class SayGoodbyeJob:
+    def __init__(self):
+        self.id = 'say_goodbye'
+    def run(self, runtime):
+        print(f'Goodbye!')
+hello_world_workflow = Workflow(workflow_id='hello_world_workflow',
+                                definition=[
+                                            HelloWorldJob(),
+                                            SayGoodbyeJob()])
+```
+
+Start from getting to the project dir:
+
+```shell
+cd docs
+```
+
+Run the `hello_world_workflow` workflow:
+
+```shell
+bigflow run --workflow hello_world_workflow
+```
+
+Output:
+
+```text
+Hello world at 2020-08-11 14:14:58!
+Goodbye!
+```
+
+Run a single job:
+
+```shell
+bigflow run --job hello_world_workflow.say_goodbye
+```
+
+Output:
+
+```text
+Goodbye!
+```
+
+Complete source code for all examples is available in this repository 
+as a part of the [Docs Examples](https://github.com/allegro/bigflow/tree/master/docs/docs_examples) project.
+
+### Setting the runtime parameter
+
+When running a workflow or a job with CLI,
+[the runtime parameter](workflow-and-job.md#the-runtime-parameter) 
+is defaulted to now. You can set it to concrete value
+using the `--runtime` argument. For example:
+
+```shell
+bigflow run --workflow hello_world_workflow --runtime '2020-08-01 10:00:00'
+```
+
+Output:
+```text
+Hello world at 2020-08-01 10:00:00!
+Goodbye!
+```
+
+### Selecting environment configuration
+
+In BigFlow, project environments are configured by [`bigflow.Config`](https://github.com/allegro/bigflow/blob/workflow-and-job-docs/docs/configuration.md) objects.
+
+Here we show how to create a workflow, which prints different messaged for each environment.
+
+[`hello_config_workflow.py`](examples/cli/hello_config_workflow.py):
+
+```python
+from bigflow import Config
+from bigflow.workflow import Workflow
+config = Config(name='dev',
+                properties={
+                        'message_to_print': 'Message to print on DEV'
+                }).add_configuration(
+                name='prod',
+                properties={
+                       'message_to_print': 'Message to print on PROD'
+                })
+class HelloConfigJob:
+    def __init__(self, message_to_print):
+        self.id = 'hello_config_job'
+        self.message_to_print = message_to_print
+    def run(self, runtime):
+        print(self.message_to_print)
+hello_world_workflow = Workflow(workflow_id='hello_config_workflow',
+                                definition=[HelloConfigJob(config.resolve_property('message_to_print'))])
+```
+
+
+To select a required environment, use the `config` parameter.
+Execute this workflow with `dev` config:
+
+```shell
+bigflow run --workflow hello_config_workflow --config dev
+```
+
+Output:
+
+```text
+bf_env is : dev
+Message to print on DEV
+```
+
+and with `prod` config:
+
+```shell
+bigflow run --workflow hello_config_workflow --config prod
+```
+
+Output:
+
+```text
+bf_env is : prod
+Message to print on PROD
+```
+
+## Building Airflow DAGs
+
+One of the key features of BigFlow CLI is the full automation of the build and deployment process.
+BigFlow can build your workflows to Airflow DAGs and deploy them to Google Cloud Composer.
+
+There are two build artifacts:
+
+1. Airflow DAG files with workflows definitions,
+1. Docker image with workflows computation code.
+
+There are four `build` commands:
+
+1. `build-dags` generates Airflow DAG files from your workflows. 
+    DAG files are saved to the local `.dags` dir.
+1. `build-package` generates a PIP package from your project based on `project_setup.py`.
+1. `build-image` generates a Docker image with this package and all requirements.
+1. `build` simply runs `build-dags`, `build-package`, and `build-image`.
+
+Start from getting detailed help: 
+
+```bash
+bigflow build-dags -h
+bigflow build-package -h
+bigflow build-image -h
+bigflow build -h
+```
+
+Before using `build` commands make sure that you have
+a valid `deployment_config.py` file.
+It should define the `docker_repository` parameter. 
+Read more about `deployment_config.py` in
+[Managing configuration in deployment_config.py](#managing-configuration-in-deployment_configpy).
+
+
+### Building DAG files
+
+The `build-dags` command takes two optional parameters:
+
+* `--start-time` &mdash; the first [runtime](workflow-and-job.md#the-runtime-parameter)
+  of your workflows. If empty, a current hour (`datetime.datetime.now().replace(minute=0, second=0, microsecond=0)`)
+  is used for hourly workflows and `datetime.date.today()` for daily workflows.
+* `--workflow` &mdash;  
+   Leave empty to build DAGs from all workflows.
+   Set a workflow Id to build selected workflow only.
+
+
+For example, build the DAG file for `hello_world_workflow` and given `start-time`:
+
+```shell
+bigflow build-dags --workflow hello_world_workflow --start-time '2020-08-01 10:00:00'
+```
+
+Output:
+
+```text
+Removing: /Users/me/bigflow/docs/.dags
+Generating DAG file for hello_world_workflow
+start_from: 2020-08-01 10:00:00
+build_ver: 0.6.0-bgqdev067a90ae
+docker_repository: eu.gcr.io/docker_repository_project/my-project
+dag_file_path: /Users/me/bigflow/docs/.dags/hello_world_workflow__v0_6_0_bgqdev067a90ae__2020_08_01_10_00_00_dag.py
+```
+
+Build DAG files for all workflows with default `start-time`:
+
+```shell
+bigflow build-dags
+```
+
+### Building PIP package
+
+Call the `build-package` command to build a PIP package from your project.
+The command requires no parameters, all configuration is taken from `project_setup.py`. 
+Your PIP package is saved to a `wheel` file in `dist` dir. For example:
+
+```shell
+bigflow build-package
+```
+
+### Building Docker image
+
+The `build-image` command builds 
+a Docker image with Python, your project's PIP package, and
+all requirements. It has one optional parameter :
+
+* `--export-image-to-file` &mdash; If set, an image is exported to a `tar` file.
+  If empty, an image is loaded to a local Docker repository.
+                             
+For example, build a Docker image to a local registry:
+
+```shell
+bigflow build-image
+```               
+       
+Output:       
+                  
+```text
+Successfully built dad5352cd6b1
+Successfully tagged eu.gcr.io/docker_repository_project/my-project:0.6.0-bgqdev067a90ae
+```                  
+                  
+Check if the image is loaded to your local registry:
+
+```shell
+docker images
+```          
+
+Output:
+
+```text
+REPOSITORY                                           TAG                    IMAGE ID            CREATED             SIZE
+eu.gcr.io/docker_repository_project/my-project       0.6.0-bgqdev067a90ae   dad5352cd6b1        1 minute ago        909MB
+```                 
+
+Build a Docker image to a `tar` file, which can be used as a build artifact
+on your CI/CD server:
+
+```shell
+bigflow build-image --export-image-to-file
+``` 
+
+Output:
+
+```text
+Successfully built be079fe2ac51
+Successfully tagged eu.gcr.io/docker_repository_project/my-project:0.6.0-bgqdev067a90ae
+Exporting the image to file: image/image-0.6.0-bgqdev067a90ae.tar
+Removing the image from the local registry
+```
+
+### Build all
+
+The `build` command builds both artifacts (DAG files and a Docker image)
+by running `build-dags`, `build-package`, and `build-image` commands.
+
+To build your project with a single command, type:
+
+```shell
+bigflow build
+``` 
+ 
+## Deploying to GCP
 
 CLI `deploy` commands deploy your **workflows** to Google Cloud Composer.
-There are two artifacts which are deployed and should be built before using `deploy`:
-
-1. DAG files built by `bigflow`,
-1. Docker image built by `bigflow`. 
-
+On this stage, you should have two build artifacts created by the 
+[`bigflow build` command](#building-airflow-dags) &mdash;
+DAG files and a Docker image.
 
 There are three `deploy` commands:
 
@@ -49,12 +353,12 @@ There are three `deploy` commands:
 1. `deploy` simply runs both `deploy-dags` and `deploy-image`.  
 
 
-Start your work from reading detailed help: 
+Start from getting detailed help: 
 
 ```bash
-bf deploy-dags -h
-bf deploy-image -h
-bf deploy -h
+bigflow deploy-dags -h
+bigflow deploy-image -h
+bigflow deploy -h
 ```
 
 #### Authentication methods
@@ -72,7 +376,7 @@ gcloud info
 Example of the `deploy-dags` command with `local_account` authentication:
 
 ```bash
-bf deploy-dags 
+bigflow deploy-dags 
 ```
 
 **`service_account` method** allows you to authenticate with a [service account](https://cloud.google.com/iam/docs/service-accounts) 
@@ -80,25 +384,25 @@ as long as you have a [Vault](https://www.vaultproject.io/) server for managing 
 
 
 Example of the `deploy-dags` command with `service_account` authentication (requires Vault):
- 
+
 ```bash 
-bf deploy-dags --auth-method=service_account --vault-endpoint https://example.com/vault --vault-secret *****
+bigflow deploy-dags --auth-method=service_account --vault-endpoint https://example.com/vault --vault-secret *****
 ```
 
 #### Managing configuration in deployment_config.py
 
 Deploy commands require a lot of configuration. You can pass all parameters directly as command line arguments,
 or save them in a `deployment_config.py` file.
- 
+
 For local development and for most CI/CD scenarios we recommend using a `deployment_config.py` file.
-This file has to contain a `bigflow.Config` object stored in the `deployment_config` variable
+This file has to contain a [`bigflow.Config`](https://github.com/allegro/bigflow/blob/workflow-and-job-docs/docs/configuration.md) 
+object stored in the `deployment_config` variable
 and can be placed in a main folder of your project.
 
 `deployment_config.py` example:
 
 ```python
-from bigflow import Config
-
+from biggerquery import Config
 deployment_config = Config(name='dev',                    
                            properties={
                                'gcp_project_id': 'my_gcp_dev_project',
@@ -116,18 +420,18 @@ Having that, you can run extremely concise `deploy` command, for example:
 
 
 ```bash 
-bf deploy-dags --config dev
-bf deploy-dags --config prod
+bigflow deploy-dags --config dev
+bigflow deploy-dags --config prod
 ```
 
-or even `bf deploy-dags`, because env `dev` is the default one in this case.
+or even `bigflow deploy-dags`, because env `dev` is the default one in this case.
 
 **Important**. By default, the `deployment_config.py` file is located in a main directory of your project,
-so `bf` expects it exists under this path: `{current_dir}/deployment_config.py`.
+so `bigflow` expects it exists under this path: `{current_dir}/deployment_config.py`.
 You can change this location by setting the `deployment-config-path` parameter:
 
 ```bash
-bf deploy-dags --deployment-config-path '/tmp/my_deployment_config.py'
+bigflow deploy-dags --deployment-config-path '/tmp/my_deployment_config.py'
 ```
 
 #### Deploy DAG files examples
@@ -136,14 +440,14 @@ Upload DAG files from `{current_dir}/.dags` to a `dev` Composer using `local_acc
 Configuration is taken from `{current_dir}/deployment_config.py`: 
 
 ```bash
-bf deploy-dags --config dev
+bigflow deploy-dags --config dev
 ```
 
 Upload DAG files from a given dir  using `service_account` authentication.
 Configuration is specified via command line arguments:
- 
+
 ```bash  
-bf deploy-dags \
+bigflow deploy-dags \
 --dags-dir '/tmp/my_dags' \
 --auth-method=service_account \
 --vault-secret ***** \
@@ -152,21 +456,21 @@ bf deploy-dags \
 --gcp-project-id my_gcp_dev_project \
 --clear-dags-folder
 ```
-  
+
 #### Deploy Docker image examples
 
 Upload a Docker image from a local repository using `local_account` authentication.
 Configuration is taken from `{current_dir}/deployment_config.py`:
 
 ```bash
-bf deploy-image --version 1.0 --config dev
+bigflow deploy-image --version 1.0 --config dev
 ```
 
 Upload a Docker image exported to a `.tar` file using `service_account` authentication.
 Configuration is specified via command line arguments:
 
 ```bash
-bf deploy-image \
+bigflow deploy-image \
 --image-tar-path '/tmp/image-0.1.0-tar' \
 --docker-repository 'eu.gcr.io/my_gcp_dev_project/my_project' \
 --auth-method=service_account \
@@ -180,20 +484,20 @@ Upload DAG files from `{current_dir}/.dags` dir and a Docker image from a local 
 Configuration is taken from `{current_dir}/deployment_config.py`:
 
 ```bash
-bf deploy --version 1.0 --config dev
+bigflow deploy --version 1.0 --config dev
 ```
 
 The same, but configuration is taken from a given file:
 
 ```bash
-bf deploy --version 1.0 --config dev --deployment-config-path '/tmp/my_deployment_config.py'
+bigflow deploy --version 1.0 --config dev --deployment-config-path '/tmp/my_deployment_config.py'
 ```
 
 Upload DAG files from a given dir and a Docker image exported to a `.tar` file using `service_account` authentication.
 Configuration is specified via command line arguments:
 
 ```bash
-bf deploy \
+bigflow deploy \
 --image-tar-path '/tmp/image-0.1.0-tar' \
 --dags-dir '/tmp/my_dags' \
 --docker-repository 'eu.gcr.io/my_gcp_dev_project/my_project' \

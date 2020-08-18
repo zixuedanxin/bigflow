@@ -4,7 +4,7 @@ from pathlib import Path
 
 import mock
 from unittest import TestCase
-from bigflow import Job
+from bigflow.bigquery.job import Job
 from bigflow.dagbuilder import get_dags_output_dir, clear_dags_output_dir, generate_dag_file, get_timezone_offset_seconds
 from bigflow.workflow import WorkflowJob, Workflow, Definition
 
@@ -66,7 +66,8 @@ class DagBuilderTestCase(TestCase):
             w_job1: (w_job2, w_job3),
             w_job2: (w_job3,)
         }
-        workflow = Workflow(workflow_id='my_workflow', definition=Definition(graph), schedule_interval='@hourly', description='test_workflow')
+        workflow = Workflow(workflow_id='my_workflow', runtime_as_datetime=True,
+                            definition=Definition(graph), schedule_interval='@hourly')
 
 
         # when
@@ -103,7 +104,7 @@ tjob1 = kubernetes_pod_operator.KubernetesPodOperator(
     task_id='job1',
     name='job1',
     cmds=['bf'],
-    arguments=['run', '--job', 'my_workflow.job1', '--runtime', '{{ execution_date.strftime("%Y-%m-%d %H:%M:%S") }}', '--root', 'ca', '--config', '{{var.value.env}}'],
+    arguments=['run', '--job', 'my_workflow.job1', '--runtime', '{{ execution_date.strftime("%Y-%m-%d %H:%M:%S") }}', '--project-package', 'ca', '--config', '{{var.value.env}}'],
     namespace='default',
     image='eu.gcr.io/my_docker_repository_project/my-project:0.3.0',
     is_delete_operator_pod=True,
@@ -116,7 +117,7 @@ tjob2 = kubernetes_pod_operator.KubernetesPodOperator(
     task_id='job2',
     name='job2',
     cmds=['bf'],
-    arguments=['run', '--job', 'my_workflow.job2', '--runtime', '{{ execution_date.strftime("%Y-%m-%d %H:%M:%S") }}', '--root', 'ca', '--config', '{{var.value.env}}'],
+    arguments=['run', '--job', 'my_workflow.job2', '--runtime', '{{ execution_date.strftime("%Y-%m-%d %H:%M:%S") }}', '--project-package', 'ca', '--config', '{{var.value.env}}'],
     namespace='default',
     image='eu.gcr.io/my_docker_repository_project/my-project:0.3.0',
     is_delete_operator_pod=True,
@@ -130,7 +131,7 @@ tjob3 = kubernetes_pod_operator.KubernetesPodOperator(
     task_id='job3',
     name='job3',
     cmds=['bf'],
-    arguments=['run', '--job', 'my_workflow.job3', '--runtime', '{{ execution_date.strftime("%Y-%m-%d %H:%M:%S") }}', '--root', 'ca', '--config', '{{var.value.env}}'],
+    arguments=['run', '--job', 'my_workflow.job3', '--runtime', '{{ execution_date.strftime("%Y-%m-%d %H:%M:%S") }}', '--project-package', 'ca', '--config', '{{var.value.env}}'],
     namespace='default',
     image='eu.gcr.io/my_docker_repository_project/my-project:0.3.0',
     is_delete_operator_pod=True,
@@ -161,8 +162,7 @@ tjob3.set_upstream(tjob1)
         graph = {
             w_job1: ()
         }
-        workflow = Workflow(workflow_id='my_daily_workflow', definition=Definition(graph), schedule_interval='@daily',
-                            description='test_workflow')
+        workflow = Workflow(workflow_id='my_daily_workflow', definition=Definition(graph), schedule_interval='@daily')
 
         # when
         dag_file_path = generate_dag_file(workdir, docker_repository, workflow, '2020-07-01', '0.3.0', 'ca')
@@ -198,7 +198,7 @@ tjob1 = kubernetes_pod_operator.KubernetesPodOperator(
     task_id='job1',
     name='job1',
     cmds=['bf'],
-    arguments=['run', '--job', 'my_daily_workflow.job1', '--runtime', '{{ execution_date.strftime("%Y-%m-%d %H:%M:%S") }}', '--root', 'ca', '--config', '{{var.value.env}}'],
+    arguments=['run', '--job', 'my_daily_workflow.job1', '--runtime', '{{ execution_date.strftime("%Y-%m-%d %H:%M:%S") }}', '--project-package', 'ca', '--config', '{{var.value.env}}'],
     namespace='default',
     image='eu.gcr.io/my_docker_repository_project/my-project:0.3.0',
     is_delete_operator_pod=True,

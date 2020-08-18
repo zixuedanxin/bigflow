@@ -8,17 +8,27 @@ import shutil
 import logging
 from collections import namedtuple
 import functools
+from datetime import datetime
 
 from google.api_core.exceptions import BadRequest
 
 logger = logging.getLogger(__name__)
 
 
-def run_process(cmd: str):
-    print(cmd)
-    process = subprocess.Popen(cmd.split(' '), stdout=subprocess.PIPE)
+def now(template: str = "%Y-%m-%d %H:00:00"):
+    return datetime.now().strftime(template)
+
+
+def run_process(cmd):
+    if isinstance(cmd, str):
+        cmd = cmd.split(' ')
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    result_output = ''
     for c in iter(lambda: process.stdout.read(1), b''):
+        l = c.decode('utf-8')
         sys.stdout.write(c.decode('utf-8'))
+        result_output += l
+    return result_output
 
 
 def resolve(path: Path):
