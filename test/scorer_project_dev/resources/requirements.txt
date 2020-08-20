@@ -1,1 +1,2 @@
 apache-beam[gcp]==2.17.0
+bigflow[stackdriver]==1.0dev3
