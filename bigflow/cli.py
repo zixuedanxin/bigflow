@@ -531,16 +531,17 @@ def _cli_build(args):
 
 
 def _cli_start_project():
-    config = {'is_basic': False, 'project_name': input('Project name'), 'projects_id': [], 'composers_bucket': []}
+    config = {'is_basic': False, 'project_name': input('Project name'), 'projects_id': [], 'composers_bucket': [], 'envs': []}
     if input("Would you like to create basic or advanced project?") != 'basic':
         number_of_projects = input('How many GCP projects would you like to use?')
         for project in range(0, int(number_of_projects)):
-            config['projects_id'].append(input('GCP dev project'))
+            config['projects_id'].append(input('GCP project'))
             config['composers_bucket'].append(input('Bucket'))
+            config['envs'].append(input('Is this your DEV/TEST/PROD environment?'))
     else:
         config['is_basic'] = True
-        config['projects_id'] = input('GCP project')
-        config['composers_bucket'] = input('Bucket')
+        config['projects_id'].append(input('GCP project'))
+        config['composers_bucket'].append(input('Bucket'))
     start_project(config)
 
 

@@ -158,7 +158,11 @@ def build_command(
                 self.run_command('bdist_wheel')
 
             if self.build_dags or self.should_run_whole_build():
+                print(root_package)
+                print(project_dir)
                 print('Building the dags')
+
+
                 clear_dags_leftovers(dags_dir)
                 build_dags(
                     root_package,
