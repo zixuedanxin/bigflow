@@ -3,9 +3,7 @@ import re
 import apache_beam as beam
 from apache_beam.io import ReadFromText
 from past.builtins import unicode
-import os
-print(os.getcwd())
-from workflows.pipeline import dataflow_pipeline
+from ..workflows.pipeline import dataflow_pipeline
 
 class SimpleJob(object):
     def __init__(self, config, id):
