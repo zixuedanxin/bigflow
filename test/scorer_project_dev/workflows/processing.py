@@ -3,11 +3,12 @@ import re
 import apache_beam as beam
 from apache_beam.io import ReadFromText
 from past.builtins import unicode
-from ..workflows.pipeline import dataflow_pipeline
+
+from .pipeline import dataflow_pipeline
+
 
 class SimpleJob(object):
-    def __init__(self, config, id):
-        self.config = config
+    def __init__(self,id):
         self.id = id
         self.retry_count = 20
         self.retry_pause_sec = 100
