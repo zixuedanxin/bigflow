@@ -8,14 +8,13 @@ from .config import workflow_config
 
 
 class SimpleJob(object):
-    def __init__(self, config, id):
-        self.config = config
+    def __init__(self, id):
         self.id = id
         self.retry_count = 20
         self.retry_pause_sec = 100
 
-    def run(self):
-        with dataflow_pipeline(workflow_config['gcp_project_id'], workflow_config['project_name'], workflow_config['dags_bucket']) as p:
+    def run(self, runtime):
+        with dataflow_pipeline() as p:
             lines = p | ReadFromText('gs://dataflow-samples/shakespeare/kinglear.txt',)
 
             # Count the occurrences of each word.
