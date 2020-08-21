@@ -1,20 +1,21 @@
-
 import re
 import apache_beam as beam
 from apache_beam.io import ReadFromText
 from past.builtins import unicode
 
 from .pipeline import dataflow_pipeline
+from .config import workflow_config
 
 
 class SimpleJob(object):
-    def __init__(self,id):
+    def __init__(self, config, id):
+        self.config = config
         self.id = id
         self.retry_count = 20
         self.retry_pause_sec = 100
 
-    def run(self, runtime):
-        with dataflow_pipeline(self.config['gcp_project_id'], self.config['project_name'], self.config['dags_bucket']) as p:
+    def run(self):
+        with dataflow_pipeline(workflow_config['gcp_project_id'], workflow_config['project_name'], workflow_config['dags_bucket']) as p:
             lines = p | ReadFromText('gs://dataflow-samples/shakespeare/kinglear.txt',)
 
             # Count the occurrences of each word.
